@@ -1,0 +1,194 @@
+Examen Práctico 1: Multiproceso (Procesos en Java)
+Instrucciones:
+
+
+Crea un programa que utilice múltiples procesos para trabajar en paralelo.
+
+
+Cada proceso debe ejecutar una tarea independiente, comunicar resultados al proceso principal y sincronizarse si es necesario.
+
+
+Se evaluará la correcta creación de procesos, ejecución en paralelo, comunicación entre procesos y combinación de resultados.
+
+
+Enunciado
+
+
+Crea un arreglo de 1000 números enteros del 1 al 1000.
+
+
+Divide el arreglo en 4 tramos iguales y crea 4 procesos que calculen la suma de su tramo correspondiente.
+
+
+Cada proceso debe enviar su resultado al proceso principal.
+
+
+El proceso principal debe recibir todos los resultados y calcular la suma total.
+
+
+Implementa un mecanismo para sincronizar el acceso a un contador compartido que indique cuántos procesos han terminado su tarea.
+
+
+(Opcional) Extiende el programa para que cada proceso también calcule la suma de los cuadrados de su tramo y envíe ambos resultados al proceso principal.
+
+import java.io.*;
+import java.util.*;
+
+public class MultiprocesoExamen {
+    public static void main(String[] args) throws Exception {
+        int[] arr = new int[1000];
+        for (int i = 0; i < arr.length; i++) arr[i] = i + 1;
+
+        int nProcesos = 4;
+        int tramo = arr.length / nProcesos;
+        List<Process> procesos = new ArrayList<>();
+        List<String> resultados = new ArrayList<>();
+
+        // Creamos procesos
+        for (int i = 0; i < nProcesos; i++) {
+            int start = i * tramo;
+            int end = (i == nProcesos - 1) ? arr.length : (i + 1) * tramo;
+            String argsProceso = start + " " + end;
+            ProcessBuilder pb = new ProcessBuilder("java", "Worker", argsProceso);
+            pb.redirectErrorStream(true);
+            procesos.add(pb.start());
+        }
+
+        // Recogemos resultados
+        int sumaTotal = 0;
+        for (Process p : procesos) {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line); // salida de proceso
+                if (line.startsWith("Suma parcial:")) {
+                    String[] parts = line.split(":");
+                    sumaTotal += Integer.parseInt(parts[1].trim());
+                }
+            }
+            p.waitFor();
+        }
+
+        System.out.println("Suma total: " + sumaTotal);
+    }
+}
+public class Worker {
+    public static void main(String[] args) {
+        int start = Integer.parseInt(args[0]);
+        int end = Integer.parseInt(args[1]);
+        int suma = 0;
+        for (int i = start + 1; i <= end; i++) {
+            suma += i;
+        }
+        System.out.println("Suma parcial: " + suma);
+    }
+}
+
+
+Examen Práctico 2: Multihilo (Hilos en Java)
+Instrucciones:
+
+
+Crea un programa que utilice múltiples hilos para acceder a datos compartidos y limitar el acceso a recursos.
+
+
+Se evaluará la correcta creación de hilos, sincronización con locks/semaforos y el manejo seguro de datos compartidos.
+
+
+Enunciado
+
+
+Crea un contador compartido que pueda ser incrementado por múltiples hilos de forma segura.
+
+
+Crea 5 hilos que incrementen el contador 100000 veces cada uno.
+
+
+Protege el acceso al contador con un Lock para evitar condiciones de carrera.
+
+
+Crea un recurso limitado que solo permita 2 hilos a la vez usarlo (por ejemplo, imprimir un mensaje). Utiliza un Semaphore para controlarlo.
+
+(Opcional) Implementa un mecanismo en el que un hilo intente adquirir el lock sin bloquearse indefinidamente (tryLock) y, si no lo consigue, realice otra acción (por ejemplo, imprimir un mensaje “No se pudo acceder al recurso”).
+
+Al finalizar, todos los hilos deben terminar correctamente y el programa principal debe mostrar:
+
+Valor final del contador compartido.
+
+Mensajes de los hilos que usaron el recurso limitado.
+
+import java.util.concurrent.locks.*;
+import java.util.concurrent.*;
+
+class Contador {
+    private int cont = 0;
+    private Lock lock = new ReentrantLock();
+
+    public void incrementar(int n) {
+        for (int i = 0; i < n; i++) {
+            lock.lock();
+            try {
+                cont++;
+            } finally {
+                lock.unlock();
+            }
+        }
+        System.out.println(Thread.currentThread().getName() + " terminó: cont=" + cont);
+    }
+
+    public int getValor() {
+        return cont;
+    }
+}
+
+public class MultihiloExamen {
+    public static void main(String[] args) throws InterruptedException {
+        Contador contador = new Contador();
+
+        // Parte 1: incrementando contador
+        Thread[] hilos = new Thread[5];
+        for (int i = 0; i < 5; i++) {
+            hilos[i] = new Thread(() -> contador.incrementar(100000), "Hilo-" + i);
+            hilos[i].start();
+        }
+        for (Thread t : hilos) t.join();
+        System.out.println("Valor final contador: " + contador.getValor());
+
+        // Parte 2: recurso limitado con Semaphore
+        Semaphore sem = new Semaphore(2);
+        Thread[] hilos2 = new Thread[5];
+        for (int i = 0; i < 5; i++) {
+            int id = i;
+            hilos2[i] = new Thread(() -> {
+                try {
+                    sem.acquire();
+                    System.out.println("Hilo-" + id + " usando recurso limitado");
+                    Thread.sleep(1000);
+                    System.out.println("Hilo-" + id + " liberando recurso");
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } finally {
+                    sem.release();
+                }
+            });
+            hilos2[i].start();
+        }
+        for (Thread t : hilos2) t.join();
+
+        // Parte 3 opcional: tryLock
+        Lock tryLock = new ReentrantLock();
+        Thread hiloTry = new Thread(() -> {
+            if (tryLock.tryLock()) {
+                try {
+                    System.out.println("Hilo-accedió con tryLock");
+                } finally {
+                    tryLock.unlock();
+                }
+            } else {
+                System.out.println("Hilo no pudo acceder con tryLock");
+            }
+        });
+        hiloTry.start();
+        hiloTry.join();
+    }
+}

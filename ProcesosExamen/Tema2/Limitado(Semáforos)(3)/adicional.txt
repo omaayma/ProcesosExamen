@@ -1,0 +1,32 @@
+private void cogerOrdenadorPrimero() throws InterruptedException {
+    while (true) {
+        ordenadores.acquire();
+        System.out.println("Empleado " + idEmpleado + " ha cogido un ordenador");
+
+        if (puestos.tryAcquire()) {  // Intentamos coger el segundo recurso
+            System.out.println("Empleado " + idEmpleado + " ha cogido un puesto");
+            break;  // ambos recursos conseguidos
+        } else {
+            // No pudo coger el segundo recurso: libera el primero y espera un poco
+            ordenadores.release();
+            System.out.println("Empleado " + idEmpleado + " no pudo coger el puesto, libera ordenador y espera");
+            Thread.sleep(random.nextInt(100) + 50); // espera aleatoria para evitar livelock
+        }
+    }
+}
+
+private void cogerPuestoPrimero() throws InterruptedException {
+    while (true) {
+        puestos.acquire();
+        System.out.println("Empleado " + idEmpleado + " ha cogido un puesto");
+
+        if (ordenadores.tryAcquire()) {
+            System.out.println("Empleado " + idEmpleado + " ha cogido un ordenador");
+            break;
+        } else {
+            puestos.release();
+            System.out.println("Empleado " + idEmpleado + " no pudo coger el ordenador, libera puesto y espera");
+            Thread.sleep(random.nextInt(100) + 50);
+        }
+    }
+}

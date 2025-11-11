@@ -1,0 +1,9 @@
+String currentpath = System.getProperty("user.dir");
+String classpath = currentpath + "/out/production/ComunicacionEntreProcesos/";
+
+
+
+ String classname="psp.procesos.sumas.Sumador";
+ //String classpath="/home/alumno/Procesos y Servicios/LanzadorSumas/out/production/LanzadorSumas/";
+ String currentPath= System.getProperty("user.dir");
+ String classpath= currentPath + "/out/production/LanzadorSumas/";
